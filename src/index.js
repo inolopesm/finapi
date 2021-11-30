@@ -6,6 +6,21 @@ app.use(express.json());
 
 const accountList = new Set();
 
+function verifyIfAccountExistsByCPF(request, response, next) {
+  const { accountCpf } = request.params
+
+  for (const account of accountList) {
+    if (account.cpf === accountCpf) {
+      request.account = account
+      return next();
+    }
+  }
+
+  return response.status(400).json({
+    error: "account not found",
+  });
+}
+
 app.post("/accounts", (request, response) => {
   for (const account of accountList) {
     if (account.cpf === request.body.cpf) {
@@ -26,18 +41,12 @@ app.post("/accounts", (request, response) => {
   return response.json(account);
 });
 
-app.get("/accounts/:accountCpf/statement", (request, response) => {
-  const { accountCpf } = request.params
-
-  for (const account of accountList) {
-    if (account.cpf === accountCpf) {
-      return response.json(account.statement);
-    }
+app.get(
+  "/accounts/:accountCpf/statement",
+  verifyIfAccountExistsByCPF,
+  (request, response) => {
+    return response.json(request.account.statement);
   }
-
-  return response.status(400).json({
-    error: "account not found",
-  });
-});
+);
 
 app.listen(3333);
