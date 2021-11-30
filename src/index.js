@@ -111,14 +111,22 @@ app.get(
   (request, response) => {
     const operationDate = new Date(request.params.operationDate);
 
-    console.log(operationDate.toDateString());
-    console.log(request.account.statement[0].createdAt.toDateString());
-
     const statement = request.account.statement.filter((operation) =>
       toDateISOString(operation.createdAt) === toDateISOString(operationDate)
     );
 
     return response.json(statement);
+  }
+);
+
+app.put(
+  "/accounts/:accountCpf",
+  verifyIfAccountExistsByCPF,
+  (request, response) => {
+    request.account.name = request.body.name;
+    const account = { ...request.account };
+    Reflect.deleteProperty(account, 'statement');
+    return response.json(request.account);
   }
 );
 
