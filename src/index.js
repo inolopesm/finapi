@@ -19,11 +19,6 @@ function verifyIfAccountExistsByCPF(request, response, next) {
   return next();
 }
 
-function toDateISOString(date) {
-  const [dateString] = date.toISOString().split('T');
-  return dateString;
-}
-
 function getBalance(statement) {
   const balance = statement.reduce((accumulator, operation) => {
     if (operation.type === "credit") {
@@ -38,6 +33,17 @@ function getBalance(statement) {
   }, 0);
 
   return balance;
+}
+
+function toDateISOString(date) {
+  const [dateString] = date.toISOString().split('T');
+  return dateString;
+}
+
+function mapAccount(account) {
+  const mappedAccount = { ...account };
+  Reflect.deleteProperty(mappedAccount, "statement");
+  return mappedAccount;
 }
 
 app.post("/accounts", (request, response) => {
@@ -124,10 +130,14 @@ app.put(
   verifyIfAccountExistsByCPF,
   (request, response) => {
     request.account.name = request.body.name;
-    const account = { ...request.account };
-    Reflect.deleteProperty(account, 'statement');
-    return response.json(request.account);
+    return response.json(mapAccount(request.account));
   }
+);
+
+app.get(
+  "/accounts/:accountCpf",
+  verifyIfAccountExistsByCPF,
+  (request, response) => response.json(mapAccount(request.account))
 );
 
 app.listen(3333);
