@@ -17,6 +17,22 @@ function verifyIfAccountExistsByCPF(request, response, next) {
   return response.status(400).json({ error: "account not found" });
 }
 
+function getBalance(statement) {
+  const balance = Array.from(statement).reduce((accumulator, operation) => {
+    if (operation.type === "credit") {
+      return accumulator + operation.amount;
+    }
+
+    if (operation.type === "debit") {
+      return accumulator - operation.amount;
+    }
+
+    throw new Error(`operation of type ${operation.type} is not expected`)
+  }, 0);
+
+  return balance;
+}
+
 app.post("/accounts", (request, response) => {
   for (const account of accountList) {
     if (account.cpf === request.body.cpf) {
@@ -59,5 +75,27 @@ app.post(
     return response.json(statementOperation)
   }
 );
+
+app.post(
+  "/accounts/:accountCpf/withdrawals",
+  verifyIfAccountExistsByCPF,
+  (request, response) => {
+    const balance = getBalance(request.account.statement)
+
+    if (balance < request.body.amount) {
+      return response.status(400).json({ error: "insufficient funds!" });
+    }
+
+    const statementOperation = {
+      id: randomUUID(),
+      type: "debit",
+      amount: request.body.amount,
+      created_at: new Date(),
+    };
+
+    request.account.statement.add(statementOperation);
+    return response.json(statementOperation);
+  }
+)
 
 app.listen(3333);
