@@ -11,7 +11,7 @@ app.post("/accounts", (request, response) => {
     if (account.cpf === request.body.cpf) {
       return response.status(400).json({
         error: "account already exists!",
-      })
+      });
     }
   }
 
@@ -24,6 +24,20 @@ app.post("/accounts", (request, response) => {
 
   accountList.add(account);
   return response.json(account);
+});
+
+app.get("/accounts/:accountCpf/statement", (request, response) => {
+  const { accountCpf } = request.params
+
+  for (const account of accountList) {
+    if (account.cpf === accountCpf) {
+      return response.json(account.statement);
+    }
+  }
+
+  return response.status(400).json({
+    error: "account not found",
+  });
 });
 
 app.listen(3333);
