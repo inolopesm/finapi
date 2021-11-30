@@ -1,4 +1,8 @@
 {
+  "name": "fin-api",
+  "description": "finances api",
+  "version": "0.14.0",
+  "license": "ISC",
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js"
