@@ -4,21 +4,28 @@ const { randomUUID } = require("crypto")
 const app = express();
 app.use(express.json());
 
-const accountList = new Set();
+const accountList = [];
 
 function verifyIfAccountExistsByCPF(request, response, next) {
-  for (const account of accountList) {
-    if (account.cpf === request.params.accountCpf) {
-      request.account = account
-      return next();
-    }
+  const account = accountList.find((account) =>
+    account.cpf === request.params.accountCpf
+  );
+
+  if (account === undefined) {
+    return response.status(400).json({ error: "account not found" });
   }
 
-  return response.status(400).json({ error: "account not found" });
+  request.account = account;
+  return next();
+}
+
+function toDateISOString(date) {
+  const [dateString] = date.toISOString().split('T');
+  return dateString;
 }
 
 function getBalance(statement) {
-  const balance = Array.from(statement).reduce((accumulator, operation) => {
+  const balance = statement.reduce((accumulator, operation) => {
     if (operation.type === "credit") {
       return accumulator + operation.amount;
     }
@@ -27,36 +34,36 @@ function getBalance(statement) {
       return accumulator - operation.amount;
     }
 
-    throw new Error(`operation of type ${operation.type} is not expected`)
+    throw new Error(`operation of type ${operation.type} is not expected`);
   }, 0);
 
   return balance;
 }
 
 app.post("/accounts", (request, response) => {
-  for (const account of accountList) {
-    if (account.cpf === request.body.cpf) {
-      return response.status(400).json({ error: "account already exists!" });
-    }
+  const accountAlreadyExists = accountList.some((account) =>
+    account.cpf === request.params.accountCpf
+  );
+
+  if (accountAlreadyExists) {
+    return response.status(400).json({ error: "account already exists!" });
   }
 
   const account = {
     id: randomUUID(),
     name: request.body.name,
     cpf: request.body.cpf,
-    statement: new Set(),
+    statement: [],
   };
 
-  accountList.add(account);
+  accountList.push(account);
   return response.json(account);
 });
 
 app.get(
   "/accounts/:accountCpf/statement",
   verifyIfAccountExistsByCPF,
-  (request, response) => {
-    return response.json(Array.from(request.account.statement));
-  }
+  (request, response) => response.json(request.account.statement)
 );
 
 app.post(
@@ -68,11 +75,11 @@ app.post(
       type: "credit",
       description: request.body.description,
       amount: request.body.amount,
-      created_at: new Date(),
+      createdAt: new Date(),
     };
 
-    request.account.statement.add(statementOperation)
-    return response.json(statementOperation)
+    request.account.statement.push(statementOperation);
+    return response.json(statementOperation);
   }
 );
 
@@ -80,7 +87,7 @@ app.post(
   "/accounts/:accountCpf/withdrawals",
   verifyIfAccountExistsByCPF,
   (request, response) => {
-    const balance = getBalance(request.account.statement)
+    const balance = getBalance(request.account.statement);
 
     if (balance < request.body.amount) {
       return response.status(400).json({ error: "insufficient funds!" });
@@ -90,12 +97,29 @@ app.post(
       id: randomUUID(),
       type: "debit",
       amount: request.body.amount,
-      created_at: new Date(),
+      createdAt: new Date(),
     };
 
-    request.account.statement.add(statementOperation);
+    request.account.statement.push(statementOperation);
     return response.json(statementOperation);
   }
-)
+);
+
+app.get(
+  "/accounts/:accountCpf/statement/:operationDate",
+  verifyIfAccountExistsByCPF,
+  (request, response) => {
+    const operationDate = new Date(request.params.operationDate);
+
+    console.log(operationDate.toDateString());
+    console.log(request.account.statement[0].createdAt.toDateString());
+
+    const statement = request.account.statement.filter((operation) =>
+      toDateISOString(operation.createdAt) === toDateISOString(operationDate)
+    );
+
+    return response.json(statement);
+  }
+);
 
 app.listen(3333);
