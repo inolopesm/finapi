@@ -140,4 +140,13 @@ app.get(
   (request, response) => response.json(mapAccount(request.account))
 );
 
+app.delete(
+  "/accounts/:accountCpf",
+  verifyIfAccountExistsByCPF,
+  (request, response) => {
+    accountList.splice(request.account, 1);
+    return response.end();
+  }
+);
+
 app.listen(3333);
